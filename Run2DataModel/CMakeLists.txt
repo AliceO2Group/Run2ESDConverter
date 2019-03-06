@@ -59,4 +59,3 @@ install(
   TARGETS Run2ESDConverter
   LIBRARY DESTINATION lib
 )
-
