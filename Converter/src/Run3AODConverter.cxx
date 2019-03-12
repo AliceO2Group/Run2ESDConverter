@@ -23,6 +23,7 @@
 #include <arrow/ipc/writer.h>
 #include <arrow/io/file.h>
 #include <arrow/io/buffered.h>
+#include <arrow/util/key_value_metadata.h>
 
 #include <memory>
 #include <vector>
@@ -39,7 +40,7 @@ namespace framework
 namespace run2
 {
 
-void Run3AODConverter::convert(TTree* tEsd, std::ostream& s)
+void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStream> stream)
 {
   TableBuilder trackParBuilder;
   TableBuilder trackParCovBuilder;
@@ -294,33 +295,42 @@ void Run3AODConverter::convert(TTree* tEsd, std::ostream& s)
     vzeroFiller(0, iev);
   } // Loop on events
   //
-  auto tracks = trackParBuilder.finalize();
-  auto covariance = trackParCovBuilder.finalize();
+  auto trackMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPAR"});
+  auto trackCovMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPARCOV"});
+  auto trackExtraMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKEXTRA"});
+  auto caloMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"CALO"});
+  auto muonMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"MUON"});
+  auto vzeroMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"VZERO"});
+  std::vector<std::shared_ptr<arrow::Table>> tables;
+  tables.emplace_back(trackParBuilder.finalize()->ReplaceSchemaMetadata(trackMetadata));
+  tables.emplace_back(trackParCovBuilder.finalize()->ReplaceSchemaMetadata(trackCovMetadata));
+  tables.emplace_back(trackExtraBuilder.finalize()->ReplaceSchemaMetadata(trackExtraMetadata));
+  tables.emplace_back(caloBuilder.finalize()->ReplaceSchemaMetadata(caloMetadata));
+  tables.emplace_back(muonBuilder.finalize()->ReplaceSchemaMetadata(muonMetadata));
+  tables.emplace_back(v0Builder.finalize()->ReplaceSchemaMetadata(vzeroMetadata));
 
   /// Writing to a stream
-  arrow::TableBatchReader reader(*tracks);
-  std::shared_ptr<arrow::io::OutputStream> rawStream(new arrow::io::StdoutStream);
-  std::shared_ptr<arrow::io::BufferedOutputStream> stream;
-  arrow::io::BufferedOutputStream::Create(1000000, arrow::default_memory_pool(), rawStream, &stream);
-  //std::shared_ptr<arrow::io::OutputStream> stream;
-  //arrow::io::FileOutputStream::Open("foo.arrow", &stream);
-  std::shared_ptr<arrow::ipc::RecordBatchWriter> writer;
-  auto outBatch = arrow::ipc::RecordBatchStreamWriter::Open(stream.get(), reader.schema(), &writer);
-  if (outBatch.ok() == false) {
-    std::runtime_error("Unable to open writer");
-  }
-  std::shared_ptr<arrow::RecordBatch> batch;
-  while (true) {
-    reader.ReadNext(&batch);
-    if (batch == nullptr) {
-      break;
+  for (auto &table : tables) {
+    arrow::TableBatchReader reader(*table);
+    std::shared_ptr<arrow::ipc::RecordBatchWriter> writer;
+    auto outBatch = arrow::ipc::RecordBatchStreamWriter::Open(stream.get(), reader.schema(), &writer);
+    if (outBatch.ok() == false) {
+      std::runtime_error("Unable to open writer");
     }
-    std::cerr << batch->num_rows() << std::endl;
-    std::cerr << batch->num_columns() << std::endl;
-    auto outStatus = writer->WriteRecordBatch(*batch);
-  }
-  if (writer->Close().ok() != true) {
-    std::runtime_error("Unable to close file");
+    std::shared_ptr<arrow::RecordBatch> batch;
+    while (true) {
+      auto status = reader.ReadNext(&batch);
+      if (status.ok() != true) {
+        std::runtime_error("Error while processing table");
+      }
+      if (batch == nullptr) {
+        break;
+      }
+      auto outStatus = writer->WriteRecordBatch(*batch);
+    }
+    if (writer->Close().ok() != true) {
+      std::runtime_error("Unable to close file");
+    }
   }
 }
 

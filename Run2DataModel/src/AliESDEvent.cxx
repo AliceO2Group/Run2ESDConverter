@@ -564,15 +564,15 @@ void AliESDEvent::ResetStdContent()
   if(fSPDPileupVertices)fSPDPileupVertices->Delete();
   if(fTrkPileupVertices)fTrkPileupVertices->Delete();
   fTracksConnected = kFALSE;
-  if(fTracks)fTracks->Delete();
+  if(fTracks)fTracks->Clear("C");
   if(fMuonTracks)fMuonTracks->Clear("C");
   if(fMuonClusters)fMuonClusters->Clear("C");
   if(fMuonPads)fMuonPads->Clear("C");
   if(fMuonGlobalTracks)fMuonGlobalTracks->Clear("C");     // AU
   if(fPmdTracks)fPmdTracks->Delete();
-  if(fTrdTracks)fTrdTracks->Delete();
-  if(fTrdTracklets)fTrdTracklets->Delete();
-  if(fV0s)fV0s->Delete();
+  if(fTrdTracks)fTrdTracks->Clear("C");
+  if(fTrdTracklets)fTrdTracklets->Clear("C");
+  if(fV0s)fV0s->Clear("C");
   if(fCascades)fCascades->Delete();
   if(fKinks)fKinks->Delete();
   if(fCaloClusters)fCaloClusters->Delete();

@@ -10,9 +10,15 @@
 #ifndef o2_framework_run2_Run3AODConverter_H_INCLUDED
 #define o2_framework_run2_Run3AODConverter_H_INCLUDED
 
-#include <ostream>
+#include <memory>
 
 class TTree;
+
+namespace arrow {
+namespace io {
+class OutputStream;
+}
+}
 
 namespace o2
 {
@@ -25,7 +31,7 @@ namespace run2
 struct Run3AODConverter {
   // Helper to return a callback which is able to conver a Run2 ESD file to an
   // Arrow Table which then gets streamed to an ostream.
-  static void convert(TTree *tESD, std::ostream &);
+  static void convert(TTree *tESD, std::shared_ptr<arrow::io::OutputStream> s);
 };
 
 } // namespace run2
