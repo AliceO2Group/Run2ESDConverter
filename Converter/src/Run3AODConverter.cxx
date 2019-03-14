@@ -167,13 +167,18 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
   AliESDEvent* esd = new AliESDEvent();
   esd->ReadFromTree(tEsd);
   size_t nev = tEsd->GetEntries();
+  size_t ntrk = 0;
+  size_t nmu = 0;
+  size_t ncalo = 0;
+  size_t nvzero = 0;
+
   for (size_t iev = 0; iev < nev; ++iev) {
     esd->Reset();
     tEsd->GetEntry(iev);
     esd->ConnectTracks();
 
     // Tracks information
-    size_t ntrk = esd->GetNumberOfTracks();
+    ntrk = esd->GetNumberOfTracks();
     for (size_t itrk = 0; itrk < ntrk; ++itrk) {
       AliESDtrack* track = esd->GetTrack(itrk);
       track->SetESDEvent(esd);
@@ -231,6 +236,7 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
     // EMCAL
     AliESDCaloCells* cells = esd->GetEMCALCells();
     size_t nCells = cells->GetNumberOfCells();
+    ncalo += nCells;
     auto cellType = cells->GetType();
     for (size_t ice = 0; ice < nCells; ++ice) {
       Short_t cellNumber;
@@ -246,6 +252,7 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
     // PHOS
     cells = esd->GetPHOSCells();
     nCells = cells->GetNumberOfCells();
+    ncalo += nCells;
     cellType = cells->GetType();
     for (size_t icp = 0; icp < nCells; ++icp) {
       Short_t cellNumber;
@@ -259,7 +266,7 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
     }
 
     // Muon Tracks
-    size_t nmu = esd->GetNumberOfMuonTracks();
+    nmu = esd->GetNumberOfMuonTracks();
     for (size_t imu = 0; imu < nmu; ++imu) {
       AliESDMuonTrack* mutrk = esd->GetMuonTrack(imu);
       //
@@ -287,27 +294,35 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
 
     // VZERO
     AliESDVZERO* vz = esd->GetVZEROData();
-    //for (Int_t ich = 0; ich < 64; ++ich) {
+    for (Int_t ich = 0; ich < 64; ++ich) {
     //  fAdcVZ[ich] = vz->GetAdc(ich);
     //  fTimeVZ[ich] = vz->GetTime(ich);
     //  fWidthVZ[ich] = vz->GetWidth(ich);
-    //}
+    }
     vzeroFiller(0, iev);
   } // Loop on events
   //
-  auto trackMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPAR"});
-  auto trackCovMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPARCOV"});
-  auto trackExtraMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKEXTRA"});
-  auto caloMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"CALO"});
-  auto muonMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"MUON"});
-  auto vzeroMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"VZERO"});
   std::vector<std::shared_ptr<arrow::Table>> tables;
-  tables.emplace_back(trackParBuilder.finalize()->ReplaceSchemaMetadata(trackMetadata));
-  tables.emplace_back(trackParCovBuilder.finalize()->ReplaceSchemaMetadata(trackCovMetadata));
-  tables.emplace_back(trackExtraBuilder.finalize()->ReplaceSchemaMetadata(trackExtraMetadata));
-  tables.emplace_back(caloBuilder.finalize()->ReplaceSchemaMetadata(caloMetadata));
-  tables.emplace_back(muonBuilder.finalize()->ReplaceSchemaMetadata(muonMetadata));
-  tables.emplace_back(v0Builder.finalize()->ReplaceSchemaMetadata(vzeroMetadata));
+  if (ntrk) {
+    auto trackMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPAR"});
+    tables.emplace_back(trackParBuilder.finalize()->ReplaceSchemaMetadata(trackMetadata));
+    auto trackCovMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPARCOV"});
+    tables.emplace_back(trackParCovBuilder.finalize()->ReplaceSchemaMetadata(trackCovMetadata));
+    auto trackExtraMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKEXTRA"});
+    tables.emplace_back(trackExtraBuilder.finalize()->ReplaceSchemaMetadata(trackExtraMetadata));
+  }
+  if (ncalo) {
+    auto caloMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"CALO"});
+    tables.emplace_back(caloBuilder.finalize()->ReplaceSchemaMetadata(caloMetadata));
+  }
+  if (nmu) {
+    auto muonMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"MUON"});
+    tables.emplace_back(muonBuilder.finalize()->ReplaceSchemaMetadata(muonMetadata));
+  }
+  if (nvzero) {
+    auto vzeroMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"VZERO"});
+    tables.emplace_back(v0Builder.finalize()->ReplaceSchemaMetadata(vzeroMetadata));
+  }
 
   /// Writing to a stream
   for (auto &table : tables) {
