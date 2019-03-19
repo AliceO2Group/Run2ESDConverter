@@ -60,7 +60,8 @@ target_link_libraries(
 
 # Install library and binaries
 install(
-  TARGETS Run2ESDConverter
+  TARGETS Run2ESDConverter run2ESD2Run3AOD Run3AODDumpSchema
   LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
 
