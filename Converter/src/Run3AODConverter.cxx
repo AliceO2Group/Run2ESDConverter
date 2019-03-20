@@ -341,6 +341,13 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
       if (batch == nullptr) {
         break;
       }
+      // Align the stream to 8 bytes, as requested by Arrow
+      int64_t pos;
+      stream->Tell(&pos);
+      if (pos % 8 != 0) {
+        int64_t extra;
+        stream->Write(&extra, 8 - (pos % 8));
+      }
       auto outStatus = writer->WriteRecordBatch(*batch);
     }
     if (writer->Close().ok() != true) {
