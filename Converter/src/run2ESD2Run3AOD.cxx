@@ -5,6 +5,8 @@
 
 #include <iostream>
 #include <memory>
+#include <TError.h>
+#include <TEnv.h>
 #include <TFile.h>
 #include <TTree.h>
 #include <cstdio>
@@ -16,6 +18,9 @@ main(int argc, char **argv) {
     puts("Please specify one or more ROOT file or a list of files preceded by .txt");
     exit(1);
   }
+
+  gErrorIgnoreLevel = kError;
+  gEnv->SetValue("AliRoot.AliLog.Output", "error");
 
   for (size_t i = 1; i < argc; ++i) {
     auto infile = std::make_unique<TFile>(argv[i]);
