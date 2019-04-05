@@ -26,6 +26,10 @@ add_executable(Run3AODDumpSchema
     src/Run3AODDumpSchema.cxx
   )
 
+add_executable(validateAODStream
+    src/validateAODStream.cxx
+  )
+
 #install(
 #  FILES ${CMAKE_CURRENT_BINARY_DIR}/lib${dict}_rdict.pcm ${CMAKE_CURRENT_BINARY_DIR}/lib${dict}.rootmap
 #  DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -58,9 +62,16 @@ target_link_libraries(
     Arrow::Arrow
 )
 
+target_link_libraries(
+  validateAODStream 
+  PUBLIC
+    Arrow::Arrow
+)
+
+
 # Install library and binaries
 install(
-  TARGETS Run2ESDConverter run2ESD2Run3AOD Run3AODDumpSchema
+  TARGETS Run2ESDConverter run2ESD2Run3AOD Run3AODDumpSchema validateAODStream
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
