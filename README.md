@@ -14,3 +14,5 @@ run2ESD2Run3AOD ~/work/active/data/AliESDs_15000246751039.3412.root | scripts/py
 ```
 
 and then you should find a few `figure*.pdf` files with some random plots in your current path.
+
+In order to validate the conversion you can use the `validateAODStream` helper.
