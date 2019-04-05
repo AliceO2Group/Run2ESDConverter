@@ -326,6 +326,9 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
 
   /// Writing to a stream
   for (auto &table : tables) {
+    std::unordered_map<std::string, std::string> meta;
+    table->schema()->metadata()->ToUnorderedMap(&meta);
+    std::cerr << "Table written: " <<  meta["description"] << std::endl;
     arrow::TableBatchReader reader(*table);
     std::shared_ptr<arrow::ipc::RecordBatchWriter> writer;
     auto outBatch = arrow::ipc::RecordBatchStreamWriter::Open(stream.get(), reader.schema(), &writer);
