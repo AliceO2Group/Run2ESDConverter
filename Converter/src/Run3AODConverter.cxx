@@ -8,6 +8,7 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 #include "Run3AODConverter.h"
+#include "Framework/AnalysisDataModel.h"
 #include "Framework/TableBuilder.h"
 
 #include "AliESDEvent.h"
@@ -48,121 +49,17 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
   TableBuilder caloBuilder;
   TableBuilder muonBuilder;
   TableBuilder v0Builder;
+  TableBuilder collisionsBuilder;
+  TableBuilder timeframeBuilder;
 
-  auto trackFiller = trackParBuilder.persist<
-    int,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float>({ "fID4Tracks",
-             "fX",
-             "fAlpha",
-             "fY",
-             "fZ",
-             "fSnp",
-             "fTgl",
-             "fSigned1Pt" });
-
-  auto sigmaFiller = trackParCovBuilder.persist<
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float>({ "fCYY",
-             "fCZY",
-             "fCZZ",
-             "fCSnpY",
-             "fCSnpZ",
-             "fCSnpSnp",
-             "fCTglY",
-             "fCTglZ",
-             "fCTglSnp",
-             "fCTglTgl",
-             "fC1PtY",
-             "fC1PtZ",
-             "fC1PtSnp",
-             "fC1PtTgl",
-             "fC1Pt21Pt2" });
-
-  auto extraFiller = trackExtraBuilder.persist<
-    float,
-    uint64_t,
-    uint8_t,
-    uint16_t,
-    uint8_t,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float>({ "fTPCinnerP",
-             "fFlags",
-             "fITSClusterMap",
-             "fTPCncls",
-             "fTRDntracklets",
-             "fITSchi2Ncl",
-             "fTPCchi2Ncl",
-             "fTRDchi2",
-             "fTOFchi2",
-             "fTPCsignal",
-             "fTRDsignal",
-             "fTOFsignal",
-             "fLength" });
-
-  auto caloFiller = caloBuilder.persist<
-    int32_t,
-    int64_t,
-    float,
-    float,
-    int8_t>(
-    {
-      "fID4Calo",
-      "fCellNumber",
-      "fAmplitude",
-      "fTime",
-      "fType",
-    });
-
-  auto muonFiller = muonBuilder.persist<
-    int,
-    float,
-    float,
-    float,
-    float,
-    float,
-    float,
-    //float, // fixme... we need to support arrays...
-    float,
-    float>({
-    "fID4mu",
-    "fInverseBendingMomentum",
-    "fThetaX",
-    "fThetaY",
-    "fZmu",
-    "fBendingCoor",
-    "fNonBendingCoor",
-    // "fCovariances",
-    "fChi2",
-    "fChi2MatchTrigger",
-  });
-
-  auto vzeroFiller = v0Builder.persist<
-    int>({ "fID4vz" });
+  auto trackFiller = trackParBuilder.cursor<aod::Tracks>();
+  auto sigmaFiller = trackParCovBuilder.cursor<aod::TracksCov>();
+  auto extraFiller = trackExtraBuilder.cursor<aod::TracksExtra>();
+  auto caloFiller = caloBuilder.cursor<aod::Calos>();
+  auto muonFiller = muonBuilder.cursor<aod::Muons>();
+  auto vzeroFiller = v0Builder.cursor<aod::VZeros>();
+  auto collisionFiller = collisionsBuilder.cursor<aod::Collisions>();
+  auto timeframeFiller = timeframeBuilder.cursor<aod::Timeframes>();
 
   AliESDEvent* esd = new AliESDEvent();
   esd->ReadFromTree(tEsd);
@@ -171,6 +68,8 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
   size_t nmu = 0;
   size_t ncalo = 0;
   size_t nvzero = 0;
+  // FIXME: what should we put as a timestamp for the timeframe??
+  timeframeFiller(0, 0);
 
   for (size_t iev = 0; iev < nev; ++iev) {
     esd->Reset();
@@ -300,6 +199,8 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
     //  fWidthVZ[ich] = vz->GetWidth(ich);
     }
     vzeroFiller(0, iev);
+    // FIXME: support multiple files...
+    collisionFiller(0, 0, ntrk, ncalo, nmu);
   } // Loop on events
   //
   std::vector<std::shared_ptr<arrow::Table>> tables;
@@ -324,6 +225,15 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
     tables.emplace_back(v0Builder.finalize()->ReplaceSchemaMetadata(vzeroMetadata));
   }
 
+  if (nev) {
+    auto collisionsMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"COLLISIONS"});
+    tables.emplace_back(collisionsBuilder.finalize()->ReplaceSchemaMetadata(collisionsMetadata));
+  }
+
+  {
+    auto timeframeMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TIMEFRAME"});
+    tables.emplace_back(timeframeBuilder.finalize()->ReplaceSchemaMetadata(timeframeMetadata));
+  }
   /// Writing to a stream
   for (auto &table : tables) {
     std::unordered_map<std::string, std::string> meta;
