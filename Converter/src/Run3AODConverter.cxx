@@ -41,6 +41,15 @@ namespace framework
 namespace run2
 {
 
+template <typename T>
+void appendTable(std::vector<std::shared_ptr<arrow::Table>> &tables, TableBuilder &builder) {
+  using metadata = typename aod::MetadataTrait<std::decay_t<T>>::metadata;
+  auto metadataKeys = std::vector<std::string>{"description"};
+  auto metadataValues = std::vector<std::string>{metadata::description()};
+  auto schemaMetadata = std::make_shared<arrow::KeyValueMetadata>(metadataKeys, metadataValues);
+  tables.emplace_back(builder.finalize()->ReplaceSchemaMetadata(schemaMetadata));
+}
+
 void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStream> stream)
 {
   TableBuilder trackParBuilder;
@@ -205,35 +214,26 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
   //
   std::vector<std::shared_ptr<arrow::Table>> tables;
   if (ntrk) {
-    auto trackMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPAR"});
-    tables.emplace_back(trackParBuilder.finalize()->ReplaceSchemaMetadata(trackMetadata));
-    auto trackCovMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKPARCOV"});
-    tables.emplace_back(trackParCovBuilder.finalize()->ReplaceSchemaMetadata(trackCovMetadata));
-    auto trackExtraMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TRACKEXTRA"});
-    tables.emplace_back(trackExtraBuilder.finalize()->ReplaceSchemaMetadata(trackExtraMetadata));
+    appendTable<aod::Tracks>(tables, trackParBuilder);
+    appendTable<aod::TracksCov>(tables, trackParCovBuilder);
+    appendTable<aod::TracksExtra>(tables, trackExtraBuilder);
   }
   if (ncalo) {
-    auto caloMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"CALO"});
-    tables.emplace_back(caloBuilder.finalize()->ReplaceSchemaMetadata(caloMetadata));
+    appendTable<aod::Calos>(tables, caloBuilder);
   }
   if (nmu) {
-    auto muonMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"MUON"});
-    tables.emplace_back(muonBuilder.finalize()->ReplaceSchemaMetadata(muonMetadata));
+    appendTable<aod::Muons>(tables, muonBuilder);
   }
   if (nvzero) {
-    auto vzeroMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"VZERO"});
-    tables.emplace_back(v0Builder.finalize()->ReplaceSchemaMetadata(vzeroMetadata));
+    appendTable<aod::VZeros>(tables, v0Builder);
   }
 
   if (nev) {
-    auto collisionsMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"COLLISIONS"});
-    tables.emplace_back(collisionsBuilder.finalize()->ReplaceSchemaMetadata(collisionsMetadata));
+    appendTable<aod::Collisions>(tables, collisionsBuilder);
   }
 
-  {
-    auto timeframeMetadata = std::make_shared<arrow::KeyValueMetadata>(std::vector<std::string>{"description"}, std::vector<std::string>{"TIMEFRAME"});
-    tables.emplace_back(timeframeBuilder.finalize()->ReplaceSchemaMetadata(timeframeMetadata));
-  }
+  appendTable<aod::Timeframes>(tables, timeframeBuilder);
+
   /// Writing to a stream
   for (auto &table : tables) {
     std::unordered_map<std::string, std::string> meta;
