@@ -116,8 +116,8 @@ public:
 	
   void       SetCaloTriggerType(const Int_t* in) {for (int i = 0; i < 15; i++) fCaloTriggerType[i] = in[i];}
   void       SetCaloTriggerType(int i, const Int_t* in) {
-    if (i) {for (i = 0; i < 19; i++) fCaloTriggerTypeNew[i] = in[i];} 
-    else {for (i = 0; i < 15; i++) fCaloTriggerType[i] = in[i];}
+    if (i) {for (int i = 0; i < 19; i++) fCaloTriggerTypeNew[i] = in[i];} 
+    else {for (int i = 0; i < 15; i++) fCaloTriggerType[i] = in[i];}
   }
   
   Int_t*     GetCaloTriggerType() {return fCaloTriggerType;}

@@ -29,6 +29,7 @@ class AliEventplane;
 class AliStack;
 class AliHeader;
 class AliGenEventHeader;
+class AliGenCocktailEventHeader;
 
 class TClonesArray;
 class TList;
@@ -103,6 +104,11 @@ public:
   
     TParticle* ParticleFromStack(Int_t i) const;
     TParticle* Particle(int i) const;
+    AliMCParticle* MotherOfParticle(int i) const;
+    Int_t GetLabelOfParticleMother(int i) const;
+    Int_t GetLabelOfParticleFirstDaughter(int i) const;
+    Int_t GetLabelOfParticleLastDaughter(int i) const;
+
     // Vertex
     using AliVEvent::GetPrimaryVertex;
     virtual const AliVVertex *GetPrimaryVertex() const;
@@ -170,6 +176,9 @@ public:
 
   static AliMCParticle *GetDummyTrack();
   
+  Int_t GetBGEventReused()                  const {return fBGEventReused;}
+  void  SetBGEventReused(int n)                   {fBGEventReused = n;}  
+
 private:
     virtual void      ReorderAndExpandTreeTR();
 
@@ -194,6 +203,7 @@ private:
     Int_t             fNprimaries;       // Number of primaries
     Int_t             fNparticles;       // Number of particles
     TList            *fSubsidiaryEvents; // List of possible subsidiary events (for example merged underlying event)
+    AliGenCocktailEventHeader* fCombinedEvenHeader; //! cocktail from headers of subsidiary events (if any)
     Int_t             fPrimaryOffset;    // Offset for primaries
     Int_t             fSecondaryOffset;  // Offset for secondaries
     Bool_t            fExternal;         // True if external particle array
@@ -201,8 +211,9 @@ private:
     static   Int_t        fgkBgLabelOffset;  // Standard branch name    
     mutable  AliVVertex*  fVertex;           // MC Vertex
     Int_t             fNBG;              //! Background particles in current event
-    
-    ClassDef(AliMCEvent, 2)              // AliVEvent realisation for MC data
+    Int_t             fBGEventReused;    // In case of embedding counts how many time currebt BKG event was used
+  
+    ClassDef(AliMCEvent, 4)              // AliVEvent realisation for MC data
 };
 
 

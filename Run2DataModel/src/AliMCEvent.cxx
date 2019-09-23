@@ -60,12 +60,14 @@ AliMCEvent::AliMCEvent():
     fNprimaries(-1),
     fNparticles(-1),
     fSubsidiaryEvents(0),
+    fCombinedEvenHeader(0),
     fPrimaryOffset(0),
     fSecondaryOffset(0),
     fExternal(0),
     fTopEvent(0),
     fVertex(0),
-    fNBG(-1)
+    fNBG(-1),
+    fBGEventReused(0)
 {
     // Default constructor
   fTopEvent = this;
@@ -86,12 +88,14 @@ AliMCEvent::AliMCEvent(const AliMCEvent& mcEvnt) :
     fNprimaries(mcEvnt.fNprimaries),
     fNparticles(mcEvnt.fNparticles),
     fSubsidiaryEvents(0),
+    fCombinedEvenHeader(0),
     fPrimaryOffset(0),
     fSecondaryOffset(0),
     fExternal(0),
     fTopEvent(mcEvnt.fTopEvent),
     fVertex(mcEvnt.fVertex),
-    fNBG(mcEvnt.fNBG)
+    fNBG(mcEvnt.fNBG),
+    fBGEventReused(mcEvnt.fBGEventReused)
 { 
 // Copy constructor
 }
@@ -109,7 +113,8 @@ AliMCEvent& AliMCEvent::operator=(const AliMCEvent& mcEvnt)
 
 AliMCEvent::~AliMCEvent()
 {
-  if (fSubsidiaryEvents) delete fSubsidiaryEvents;
+  delete fSubsidiaryEvents;
+  delete fCombinedEvenHeader;
 }
 
 void AliMCEvent::ConnectTreeE (TTree* tree)
@@ -261,7 +266,10 @@ void AliMCEvent::FinishEvent()
     fStack      =  0;
     delete fSubsidiaryEvents;
     fSubsidiaryEvents = 0;
+    delete fCombinedEvenHeader;
+    fCombinedEvenHeader = 0;
     fNBG = -1;
+    fBGEventReused = 0;
 }
 
 
@@ -531,8 +539,12 @@ Bool_t AliMCEvent::IsFromSubsidiaryEvent(int id) const
   if (fSubsidiaryEvents) {
     AliMCEvent* mc;
     FindIndexAndEvent(id, mc);
-    if (mc != fSubsidiaryEvents->At(0)) return kTRUE;
-  } 
+    if (mc != fSubsidiaryEvents->First()) return kTRUE;
+  }
+  if (!fAODMCHeader) { // for the AOD need to check the particle itself
+    return GetTrack(id)->IsFromSubsidiaryEvent();
+  }
+  
   return kFALSE;
 }
 
@@ -608,6 +620,11 @@ AliVParticle* AliMCEvent::GetTrack(Int_t i) const
       mcParticle = new ((*fMCParticles)[nentries]) AliMCParticle(particle, rarray, i);
       fMCParticleMap->AddAt(mcParticle, i);
       if (mcParticle) {
+	// in case of embedding flag if it is from the underlying event
+	if (fTopEvent && fTopEvent->fSubsidiaryEvents && (fTopEvent->fSubsidiaryEvents->At(0)!= this) ) {
+	  mcParticle->SetFromSubsidiaryEvent(kTRUE);
+	}
+	
 	TParticle* part = mcParticle->Particle();
 	Int_t imo  = part->GetFirstMother();
 	Int_t id1  = part->GetFirstDaughter();
@@ -669,7 +686,7 @@ AliGenEventHeader* AliMCEvent::GenEventHeader() const
 {
   if (!fExternal) {
     // ESD
-    return (fHeader->GenEventHeader());
+    return  fCombinedEvenHeader ? fCombinedEvenHeader : fHeader->GenEventHeader();
   } else {
     // AOD
     if (fAODMCHeader) {
@@ -827,28 +844,48 @@ void AliMCEvent::InitEvent()
 {
 //
 // Initialize the subsidiary event structure
-    if (fSubsidiaryEvents) {
-	TIter next(fSubsidiaryEvents);
-	AliMCEvent* evt;
-	fNprimaries = 0;
-	fNparticles = 0;
-	
-	while((evt = (AliMCEvent*)next())) {
-	    fNprimaries += evt->GetNumberOfPrimaries();	
-	    fNparticles += evt->GetNumberOfTracks();    
-	}
-	
-	Int_t ioffp = 0;
-	Int_t ioffs = fNprimaries;
-	next.Reset();
-	
-	while((evt = (AliMCEvent*)next())) {
-	    evt->SetPrimaryOffset(ioffp);
-	    evt->SetSecondaryOffset(ioffs);
-	    ioffp += evt->GetNumberOfPrimaries();
-	    ioffs += (evt->GetNumberOfTracks() - evt->GetNumberOfPrimaries());	    
-	}
+  if (fSubsidiaryEvents) {
+    AliMCEvent* evt;
+    fNprimaries = 0;
+    fNparticles = 0;
+    
+    fCombinedEvenHeader = new AliGenCocktailEventHeader();
+    
+    AliMCEvent* evt0 = (AliMCEvent*)fSubsidiaryEvents->First();
+    AliGenEventHeader* genH = ((AliMCEvent*)fSubsidiaryEvents->First())->GenEventHeader();
+    TArrayF vtx;
+    genH->PrimaryVertex(vtx);
+    fCombinedEvenHeader->SetPrimaryVertex(vtx);
+    
+    TIter next(fSubsidiaryEvents); 
+    while((evt = (AliMCEvent*)next())) {
+      fNprimaries += evt->GetNumberOfPrimaries();	
+      fNparticles += evt->GetNumberOfTracks();
+      //
+      // extend combined gen header
+      AliHeader* headerX = evt->Header();
+      AliGenEventHeader* genHX = headerX->GenEventHeader();
+      fCombinedEvenHeader->SetNProduced( fCombinedEvenHeader->NProduced() +  genHX->NProduced() );
+      
+      if ( genHX->InheritsFrom(AliGenCocktailEventHeader::Class()) ) {
+	TList* cocktHeadersX = ((AliGenCocktailEventHeader*)genHX)->GetHeaders();
+	TIter nxtH(cocktHeadersX);
+	while( (genH=(AliGenEventHeader*)nxtH()) ) fCombinedEvenHeader->AddHeader( genH );
+      }
+      else fCombinedEvenHeader->AddHeader( genHX );
     }
+    
+    Int_t ioffp = 0;
+    Int_t ioffs = fNprimaries;
+    
+    next.Reset();
+    while((evt = (AliMCEvent*)next())) {
+      evt->SetPrimaryOffset(ioffp);
+      evt->SetSecondaryOffset(ioffs);
+      ioffp += evt->GetNumberOfPrimaries();
+      ioffs += (evt->GetNumberOfTracks() - evt->GetNumberOfPrimaries());	    
+    }
+  }
 }
 
 void AliMCEvent::PreReadAll()                              
@@ -896,17 +933,23 @@ Bool_t AliMCEvent::IsFromBGEvent(Int_t index)
     // Checks if a particle is from the background events
     // Works for HIJING inside Cocktail
   if (index >= BgLabelOffset() && !fSubsidiaryEvents) return kTRUE;
+
+  if (!fSubsidiaryEvents) { // this is correct for plane MC only
     if (fNBG == -1) {
-	AliGenCocktailEventHeader* coHeader = 
-	    dynamic_cast<AliGenCocktailEventHeader*> (GenEventHeader());
-	if (!coHeader) return (0);
-	TList* list = coHeader->GetHeaders();
-	AliGenHijingEventHeader* hijingH = dynamic_cast<AliGenHijingEventHeader*>(list->FindObject("Hijing"));
-	if (!hijingH) return (0);
-	fNBG = hijingH->NProduced();
+      AliGenCocktailEventHeader* coHeader = 
+	dynamic_cast<AliGenCocktailEventHeader*> (GenEventHeader());
+      if (!coHeader) return (0);
+      TList* list = coHeader->GetHeaders();
+      AliGenHijingEventHeader* hijingH = dynamic_cast<AliGenHijingEventHeader*>(list->FindObject("Hijing"));
+      if (!hijingH) return (0);
+      fNBG = hijingH->NProduced();
     }
-    
     return (index < fNBG);
+  }
+  else {
+    return IsFromSubsidiaryEvent(index);
+  }
+    
 }
 
 
@@ -979,19 +1022,22 @@ void AliMCEvent::AssignGeneratorIndex() {
       }
       //
       // Loop over primary particles for generator i
-      for (Int_t j = nsumpart-1; j >= nsumpart-npart; j--) {
-	AliVParticle* part = fTopEvent->GetTrack(j); // after 1st GetTrack indices correspond to top event
-	if (!part) {
-	  AliWarning(Form("AliMCEvent::AssignGeneratorIndex: 0-pointer to particle j %8d npart %8d nsumpart %8d Nprimaries %8d\n", 
-			  j, npart, nsumpart, fNprimaries));
-	  break;
+      TString ttl = gh->GetTitle();
+      if (!ttl.Contains("particles_suppressed")) {
+	for (Int_t j = nsumpart-1; j >= nsumpart-npart; j--) {
+	  AliVParticle* part = fTopEvent->GetTrack(j); // after 1st GetTrack indices correspond to top event
+	  if (!part) {
+	    AliWarning(Form("AliMCEvent::AssignGeneratorIndex: 0-pointer to particle j %8d npart %8d nsumpart %8d Nprimaries %8d\n", 
+			    j, npart, nsumpart, fNprimaries));
+	    break;
+	  }
+	  part->SetGeneratorIndex(i);
+	  Int_t dmin = part->GetDaughterFirst();
+	  Int_t dmax = part->GetDaughterLast();
+	  if (dmin == -1) continue;
+	  AssignGeneratorIndex(i, dmin, dmax);
 	}
-	part->SetGeneratorIndex(i);
-	Int_t dmin = part->GetFirstDaughter();
-	Int_t dmax = part->GetLastDaughter();
-	if (dmin == -1) continue;
-	AssignGeneratorIndex(i, dmin, dmax);
-      } 
+      }
       nsumpart -= npart;
     }
   }
@@ -1000,8 +1046,8 @@ void AliMCEvent::AssignGeneratorIndex(Int_t index, Int_t dmin, Int_t dmax) {
   for (Int_t k = dmin; k <= dmax; k++) {
     AliVParticle* dpart = fTopEvent->GetTrack(k);
     dpart->SetGeneratorIndex(index);
-    Int_t d1 = dpart->GetFirstDaughter();
-    Int_t d2 = dpart->GetLastDaughter();
+    Int_t d1 = dpart->GetDaughterFirst();
+    Int_t d2 = dpart->GetDaughterLast();
     if (d1 > -1) {
       AssignGeneratorIndex(index, d1, d2);
     }
@@ -1091,6 +1137,39 @@ TParticle* AliMCEvent::Particle(int i) const
   const AliMCParticle* mcpart = (const AliMCParticle*)GetTrack(i);
   return mcpart ? mcpart->Particle() : 0;
 }
+
+AliMCParticle* AliMCEvent::MotherOfParticle(int i) const
+{
+  // extract mother Particle from the MCTrack with global index i
+  Int_t labmoth=GetLabelOfParticleMother(i);
+  AliMCParticle* mothpart = (AliMCParticle*)GetTrack(labmoth);
+  return mothpart;
+}
+
+Int_t AliMCEvent::GetLabelOfParticleMother(int i) const
+{
+  // return index of the mother of particle i
+  const AliMCParticle* mcpart = (const AliMCParticle*)GetTrack(i);
+  Int_t labmoth=mcpart->GetMother();
+  return labmoth;
+}
+
+Int_t AliMCEvent::GetLabelOfParticleFirstDaughter(int i) const
+{
+  // return index of the first daughter of particle i
+  const AliMCParticle* mcpart = (const AliMCParticle*)GetTrack(i);
+  Int_t labdau=mcpart->GetDaughterFirst();
+  return labdau;
+}
+
+Int_t AliMCEvent::GetLabelOfParticleLastDaughter(int i) const
+{
+  // return index of the last daughter of particle i
+  const AliMCParticle* mcpart = (const AliMCParticle*)GetTrack(i);
+  Int_t labdau=mcpart->GetDaughterLast();
+  return labdau;
+}
+
 
 Int_t AliMCEvent::Raw2MergedLabel(int lbRaw) const
 {
