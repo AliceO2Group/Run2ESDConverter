@@ -64,6 +64,7 @@ src/AliVTOFMatch.cxx
 src/AliFileTag.cxx
 src/AliRawVEvent.cxx
 src/AliVParticle.cxx
+src/AliNDLocalRegression.cxx
 src/AliRawReader.cxx
 src/AliVVZEROfriend.cxx
 src/AliTOFPIDResponse.cxx
@@ -242,6 +243,7 @@ src/AliHMPIDRecon.cxx
 src/AliTriggerInteraction.cxx
 src/AliAlignObj.cxx
 src/AliESDMuonTrack.cxx
+src/AliMathBase.cxx
 src/AliESDAD.cxx
 src/AliDetectorEventHeader.cxx
 src/AliESDTrdTrack.cxx
@@ -329,6 +331,7 @@ src/AliOADBContainer.h
 src/AliESDCaloCells.h
 src/AliCentrality.h
 src/AliLHCData.h
+src/AliNDLocalRegression.h
 src/AliGlobalQADataMaker.h
 src/AliTriggerDescriptor.h
 src/AliHMPIDParam.h
@@ -399,6 +402,7 @@ src/AliQA.h
 src/AliLHCTag.h
 src/AliESD.h
 src/AliCDBRunRange.h
+src/AliMathBase.h
 src/AliGenHijingEventHeader.h
 src/AliESDTZERO.h
 src/AliRawVEquipment.h
