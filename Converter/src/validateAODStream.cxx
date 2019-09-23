@@ -1,8 +1,11 @@
 #include <arrow/io/buffered.h>
-#include <arrow/util/io-util.h>
-#include <arrow/ipc/writer.h>
-#include <arrow/record_batch.h>
 #include <arrow/ipc/reader.h>
+#include <arrow/ipc/writer.h>
+#include <arrow/memory_pool.h>
+#include <arrow/record_batch.h>
+#include <arrow/type.h>
+#include <arrow/util/io-util.h>
+#include <arrow/util/key_value_metadata.h>
 
 #include <iostream>
 #include <memory>

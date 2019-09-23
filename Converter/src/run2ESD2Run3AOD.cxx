@@ -1,7 +1,9 @@
 #include "Run3AODConverter.h"
+
 #include <arrow/io/buffered.h>
-#include <arrow/util/io-util.h>
 #include <arrow/ipc/writer.h>
+#include <arrow/memory_pool.h>
+#include <arrow/util/io-util.h>
 
 #include <iostream>
 #include <memory>
