@@ -16,3 +16,19 @@ run2ESD2Run3AOD ~/work/active/data/AliESDs_15000246751039.3412.root | scripts/py
 and then you should find a few `figure*.pdf` files with some random plots in your current path.
 
 In order to validate the conversion you can use the `validateAODStream` helper.
+
+# Updating to a given version of AliRoot / O2
+
+The converter embeds a copy of the relevant AliRoot files to be able to read ESD event
+content. It also contains a copy of the O2 arrow based utilities. In order to update to the
+latest greatest version you need to:
+
+```
+git clone https://github.com/AliceO2Group/AliceO2 O2
+git clone https://github.com/AliceO2Group/Run2ESDConverter O2
+git clone https://github.com/alisw/AliRoot
+cd Run2ESDConverter
+rm -rf Run2DataModel/src
+./copyArrowDataModel.sh
+./copyAliESDEvent.sh
+```
