@@ -8,6 +8,7 @@
 //     Author: A. Dainese
 //-------------------------------------------------------------------------
 
+#include <string_view>
 #include <TNamed.h>
 
 class AliVVertex: public TNamed {
