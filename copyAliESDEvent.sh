@@ -98,3 +98,4 @@ ed Run2DataModel/src/AliSimulation.cxx << \EOF
 wq
 EOF
 fi
+cp ${ALIROOT_ROOT}/STEER/STEERBase/AliHMPIDPIDResponse.* ./Run2DataModel/src
