@@ -11,7 +11,7 @@
 include(files.cmake)
 
 get_directory_property(include_dirs INCLUDE_DIRECTORIES)
-list(APPEND include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/src")
+list(APPEND include_dirs "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
 get_target_property(arrow_inc_dir Arrow::Arrow INTERFACE_INCLUDE_DIRECTORIES)
 list(APPEND include_dirs "${arrow_inc_dir}")
 list(REMOVE_DUPLICATES include_dirs)
