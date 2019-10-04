@@ -267,7 +267,7 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
     if (pos % 8 != 0) {
       int64_t extra = 0;
       stream->Write(&extra, 8 - (pos % 8));
-      std::cerr << "moving stream " << 8 - ( pos % 8 ) << " positions to aling ... "<<std::endl;
+      std::cerr << "moving stream " << 8 - ( pos % 8 ) << " positions to align ... "<<std::endl;
     }
  
   }
