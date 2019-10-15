@@ -571,8 +571,8 @@ void AliESDEvent::ResetStdContent()
   if(fMuonGlobalTracks)fMuonGlobalTracks->Clear("C");     // AU
   if(fPmdTracks)fPmdTracks->Delete();
   if(fTrdTracks)fTrdTracks->Delete();
-  if(fTrdTracklets)fTrdTracklets->Delete();
-  if(fV0s)fV0s->Delete();
+  if(fTrdTracklets)fTrdTracklets->Clear();
+  if(fV0s)fV0s->Clear();
   if(fCascades)fCascades->Delete();
   if(fKinks)fKinks->Delete();
   if(fCaloClusters)fCaloClusters->Delete();
