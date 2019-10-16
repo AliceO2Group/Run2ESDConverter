@@ -14,6 +14,7 @@
 #include "AliESDEvent.h"
 #include "AliESDtrack.h"
 #include "AliESDVZERO.h"
+#include "AliESDVertex.h"
 #include "AliESDCaloCells.h"
 #include "AliESDMuonTrack.h"
 #include "AliExternalTrackParam.h"
@@ -208,8 +209,10 @@ void Run3AODConverter::convert(TTree* tEsd, std::shared_ptr<arrow::io::OutputStr
     //  fWidthVZ[ich] = vz->GetWidth(ich);
     }
     vzeroFiller(0, iev);
-    // FIXME: support multiple files...
-    collisionFiller(0, 0, ntrk, ncalo, nmu);
+    AliESDVertex const* vertex = esd->GetVertex();
+    // FIXME: timeframeid is dummy
+    // FIXME: last few entries are obviously dummy
+    collisionFiller(0, 0, ntrk, iev, vertex->GetX(), vertex->GetY(), vertex->GetZ(), vertex->GetChi2(), vertex->GetBC(), 0, 0, 0, 0, 0, 0, 0);
   } // Loop on events
   //
   std::vector<std::shared_ptr<arrow::Table>> tables;
