@@ -7,20 +7,20 @@
 #include <arrow/util/io-util.h>
 #include <arrow/util/key_value_metadata.h>
 
-#include <iostream>
-#include <memory>
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
+#include <memory>
 
 using namespace arrow;
 using namespace arrow::io;
 using namespace arrow::ipc;
 
-int
-main(int argc, char **argv) {
+int main(int argc, char **argv) {
   std::shared_ptr<InputStream> rawStream(new StdinStream);
   std::shared_ptr<BufferedInputStream> stream;
-  auto bufferStatus = BufferedInputStream::Create(1000000, default_memory_pool(), rawStream, &stream);
+  auto bufferStatus = BufferedInputStream::Create(
+      1000000, default_memory_pool(), rawStream, &stream);
   if (bufferStatus.ok() == false) {
     puts("Unable to create buffer\n");
     return 1;
@@ -59,7 +59,8 @@ main(int argc, char **argv) {
       std::unordered_map<std::string, std::string> meta;
       batch->schema()->metadata()->ToUnorderedMap(&meta);
       printf("table: %s\n", meta["description"].c_str());
-      printf("  num_columns: %d, num_rows: %lld\n", batch->num_columns(), batch->num_rows());
+      printf("  num_columns: %d, num_rows: %lld\n", batch->num_columns(),
+             batch->num_rows());
     }
     stream->Advance(8 - (pos % 8));
   }
