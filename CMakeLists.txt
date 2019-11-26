@@ -18,6 +18,7 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 
 find_package(Arrow REQUIRED)
 find_package(ROOT REQUIRED)
+find_package(ms_gsl REQUIRED MODULE)
 
 
 # Build targets with install rpath on Mac to dramatically speed up installation

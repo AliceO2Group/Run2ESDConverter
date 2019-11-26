@@ -129,6 +129,8 @@ void Run3AODConverter::convert(TTree *tEsd,
     size_t nCells = cells->GetNumberOfCells();
     ncalo += nCells;
     auto cellType = cells->GetType();
+    // FIXME: this should retrieve the caloType
+    auto caloType = 0;
     for (size_t ice = 0; ice < nCells; ++ice) {
       Short_t cellNumber;
       Double_t amplitude;
@@ -137,7 +139,7 @@ void Run3AODConverter::convert(TTree *tEsd,
       Double_t efrac;
 
       cells->GetCell(ice, cellNumber, amplitude, time, mclabel, efrac);
-      caloFiller(0, iev, cellNumber, amplitude, time, cellType);
+      caloFiller(0, iev, cellNumber, amplitude, time, cellType, caloType);
     }
 
     // PHOS
@@ -145,6 +147,7 @@ void Run3AODConverter::convert(TTree *tEsd,
     nCells = cells->GetNumberOfCells();
     ncalo += nCells;
     cellType = cells->GetType();
+    caloType = 0;
     for (size_t icp = 0; icp < nCells; ++icp) {
       Short_t cellNumber;
       Double_t amplitude;
@@ -153,7 +156,7 @@ void Run3AODConverter::convert(TTree *tEsd,
       Double_t efrac;
 
       cells->GetCell(icp, cellNumber, amplitude, time, mclabel, efrac);
-      caloFiller(0, iev, cellNumber, amplitude, time, cellType);
+      caloFiller(0, iev, cellNumber, amplitude, time, caloType, cellType);
     }
 
     // Muon Tracks
@@ -188,8 +191,8 @@ void Run3AODConverter::convert(TTree *tEsd,
     // FIXME: timeframeid is dummy
     // FIXME: last few entries are obviously dummy
     collisionFiller(0, 0, ntrk, iev, vertex->GetX(), vertex->GetY(),
-                    vertex->GetZ(), vertex->GetChi2(), vertex->GetBC(), 0, 0, 0,
-                    0, 0, 0, 0);
+                    vertex->GetZ(), vertex->GetChi2(), vertex->GetBC(), 0, 0, 0, 
+                    0, 0, 0, 0, 0, 0, 0, 0);
   } // Loop on events
   //
   std::vector<std::shared_ptr<arrow::Table>> tables;
