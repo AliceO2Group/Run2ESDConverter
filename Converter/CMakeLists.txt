@@ -54,6 +54,7 @@ target_link_libraries(
     ROOT::Minuit
     ROOT::XMLParser
     Run2ESDConverter
+    ms_gsl::ms_gsl
 )
 
 target_link_libraries(
