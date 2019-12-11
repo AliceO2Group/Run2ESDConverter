@@ -186,13 +186,13 @@ void Run3AODConverter::convert(TTree *tEsd,
       //  fTimeVZ[ich] = vz->GetTime(ich);
       //  fWidthVZ[ich] = vz->GetWidth(ich);
     }
-    vzeroFiller(0, iev);
+    vzeroFiller(0, iev, 0, 0);
     AliESDVertex const *vertex = esd->GetVertex();
     // FIXME: timeframeid is dummy
     // FIXME: last few entries are obviously dummy
     collisionFiller(0, 0, ntrk, iev, vertex->GetX(), vertex->GetY(),
                     vertex->GetZ(), vertex->GetChi2(), vertex->GetBC(), 0, 0, 0, 
-                    0, 0, 0, 0, 0, 0, 0, 0);
+                    0, 0, 0, 0);
   } // Loop on events
   //
   std::vector<std::shared_ptr<arrow::Table>> tables;
